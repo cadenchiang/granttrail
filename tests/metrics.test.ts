@@ -3,7 +3,7 @@ import { award, DEMO_TODAY, objectives } from "@/data/award";
 import { evidence } from "@/data/evidence";
 import { transactions } from "@/data/transactions";
 import {
-  budgetUsed, evidenceFor, initialEvidenceState, objectiveSummaries, reviewQueue, spendByCategory, timeElapsed, totalSpent,
+  budgetUsed, evidenceFor, isReportable, initialEvidenceState, objectiveSummaries, reviewQueue, spendByCategory, timeElapsed, totalSpent,
 } from "@/lib/metrics";
 
 describe("metrics", () => {
@@ -29,6 +29,16 @@ describe("metrics", () => {
     expect(reviewQueue(evidence, state).map((e) => e.id)).toEqual(["e12", "e13", "e14"]);
     state.e14 = { objectiveId: "o3", confirmed: true };
     expect(reviewQueue(evidence, state).map((e) => e.id)).toEqual(["e12", "e13"]);
+  });
+  it("isReportable needs a mapping plus confirmation or high confidence", () => {
+    const state = initialEvidenceState(evidence);
+    const byId = (id: string) => evidence.find((e) => e.id === id)!;
+    expect(isReportable(byId("e4"), state)).toBe(true);
+    expect(isReportable(byId("e14"), state)).toBe(false);
+    expect(isReportable(byId("e12"), state)).toBe(false);
+    state.e4 = { objectiveId: null, confirmed: true };
+    expect(isReportable(byId("e4"), state)).toBe(false);
+    expect(isReportable(byId("e4"), {})).toBe(false);
   });
   it("evidence and summaries follow the current mapping", () => {
     const state = initialEvidenceState(evidence);

@@ -4,7 +4,7 @@
  */
 import { EQUIPMENT_THRESHOLD } from "./flags";
 import { formatPct, formatUSD } from "./format";
-import { budgetUsed, evidenceFor, spendByCategory, timeElapsed, totalSpent } from "./metrics";
+import { budgetUsed, evidenceFor, isReportable, spendByCategory, timeElapsed, totalSpent } from "./metrics";
 import type { Award, Claim, Evidence, EvidenceState, FlagStatus, Gap, Objective, ReportSection, Transaction } from "./types";
 
 export interface ReportInput {
@@ -32,7 +32,7 @@ function resolved(status: Record<string, FlagStatus>, id: string): boolean {
 
 /** One section per objective: status line, dated evidence claims, open gap. */
 function objectiveSection(o: Objective, input: ReportInput): ReportSection {
-  const items = evidenceFor(o.id, input.evidence, input.evidenceState).reverse();
+  const items = evidenceFor(o.id, input.evidence, input.evidenceState).filter((e) => isReportable(e, input.evidenceState)).reverse();
   const claims: Claim[] = [
     { text: `Target: ${o.target}. Status: ${STATUS_WORDS[o.status]} (${o.progress}%).`, citations: [`award:${o.sourceRef}`] },
     ...items.map((e) => ({ text: e.claim, citations: [e.id] })),
@@ -87,7 +87,7 @@ export function buildReport(input: ReportInput): ReportSection[] {
       text: `${t.lineItems![0].description} purchased from ${t.merchant} for ${formatUSD(t.amount)} with grant funds${inInventory ? " and recorded in the equipment inventory" : ""}.`,
       citations: [t.id],
     });
-    if (!inInventory) equipment.gaps.push({ id: `gap-equipment-${t.id}`, text: `Confirm the ${t.lineItems![0].description.toLowerCase()} is recorded in the equipment inventory.` });
+    if (!inInventory) equipment.gaps.push({ id: `gap-equipment-${t.id}`, text: `Confirm that the equipment bought from ${t.merchant} (${t.lineItems![0].description}, ${formatUSD(t.amount)}) is recorded in the equipment inventory.` });
   }
 
   const inventions: ReportSection = { id: "inventions", heading: "Inventions and disclosures", claims: [], gaps: [] };
@@ -105,7 +105,7 @@ export function buildReport(input: ReportInput): ReportSection[] {
 
   const problems: ReportSection = { id: "problems", heading: "Problems and changes", claims: [], gaps: [] };
   for (const o of objectives.filter((x) => x.status === "at_risk")) {
-    const blocker = evidenceFor(o.id, input.evidence, input.evidenceState).find((e) => /^blocked/i.test(e.excerpt));
+    const blocker = evidenceFor(o.id, input.evidence, input.evidenceState).find((e) => isReportable(e, input.evidenceState) && /^blocked/i.test(e.excerpt));
     if (resolved(flagStatus, `atrisk-${o.id}`) && blocker) {
       problems.claims.push({ text: `${o.code} is behind schedule (${o.progress}% complete). ${blocker.claim}`, citations: [blocker.id] });
     } else {
@@ -158,4 +158,12 @@ export function toMarkdown(title: string, sections: ReportSection[], label: (id:
   lines.push("## Sources", "");
   order.forEach((id, i) => lines.push(`${i + 1}. ${label(id) ?? `UNRESOLVED CITATION (${id})`}`));
   return lines.join("\n") + "\n";
+}
+
+/**
+ * Where a person fixes a gap: objective gaps need linked work (Evidence tab),
+ * everything else comes from a flag (Flags tab).
+ */
+export function gapTarget(gapId: string): "evidence" | "flags" {
+  return /^gap-o\d/.test(gapId) ? "evidence" : "flags";
 }

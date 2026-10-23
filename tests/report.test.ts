@@ -5,7 +5,7 @@ import { transactions } from "@/data/transactions";
 import { resolveCitation } from "@/lib/citations";
 import { applyResolutions } from "@/lib/flags";
 import { initialEvidenceState } from "@/lib/metrics";
-import { buildReport, countGaps, phaseTwoHeadStart, toMarkdown, type ReportInput } from "@/lib/report";
+import { buildReport, countGaps, gapTarget, phaseTwoHeadStart, toMarkdown, type ReportInput } from "@/lib/report";
 import type { FlagStatus } from "@/lib/types";
 
 const OPEN: Record<string, FlagStatus> = {
@@ -53,6 +53,20 @@ describe("buildReport", () => {
   });
 });
 
+describe("review gate", () => {
+  it("keeps unconfirmed low-confidence work out until a person confirms it", () => {
+    const cited = (st: ReturnType<typeof initialEvidenceState>) =>
+      buildReport({ ...input(OPEN), evidenceState: st }).flatMap((s) => s.claims.flatMap((c) => c.citations));
+    const state = initialEvidenceState(evidence);
+    expect(cited(state)).not.toContain("e13");
+    expect(cited(state)).not.toContain("e14");
+    state.e14 = { objectiveId: "o3", confirmed: true };
+    expect(cited(state)).toContain("e14");
+    const o3 = buildReport({ ...input(OPEN), evidenceState: state }).find((s) => s.id === "obj-o3")!;
+    expect(o3.claims.some((c) => c.citations.includes("e14"))).toBe(true);
+  });
+});
+
 describe("phaseTwoHeadStart and toMarkdown", () => {
   it("reuses measured objective claims", () => {
     const claims = phaseTwoHeadStart(buildReport(input(OPEN)));
@@ -76,5 +90,16 @@ describe("resolveCitation", () => {
     expect(resolveCitation("e4", ctx)!.source).toBe("docs");
     expect(resolveCitation("t7", ctx)!.label).toBe("Lambda $14,200");
     expect(resolveCitation("nope", ctx)).toBeNull();
+  });
+});
+
+describe("gapTarget", () => {
+  it("sends objective gaps to Evidence and flag gaps to Flags", () => {
+    const ids = buildReport(input(OPEN)).flatMap((s) => s.gaps.map((g) => [g.id, gapTarget(g.id)]));
+    expect(Object.fromEntries(ids)).toEqual({
+      "gap-o2": "evidence", "gap-o3": "evidence", "gap-equipment-t7": "flags",
+      "gap-invention-e7": "flags", "gap-problem-o3": "flags", "gap-unallowable-t12": "flags",
+    });
+    expect(gapTarget("gap-o1-none")).toBe("evidence");
   });
 });

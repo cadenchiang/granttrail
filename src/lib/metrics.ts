@@ -79,6 +79,15 @@ export function reviewQueue(items: Evidence[], state: Record<string, EvidenceSta
 }
 
 /**
+ * Whether an item may appear in the report: mapped to an objective and either
+ * confirmed by a person or confidently mapped by the AI.
+ */
+export function isReportable(e: Evidence, state: Record<string, EvidenceState>): boolean {
+  const s = state[e.id];
+  return !!s && s.objectiveId !== null && (s.confirmed || e.confidence >= REVIEW_CONFIDENCE);
+}
+
+/**
  * Evidence currently mapped to an objective, newest first.
  */
 export function evidenceFor(objectiveId: string, items: Evidence[], state: Record<string, EvidenceState>): Evidence[] {
