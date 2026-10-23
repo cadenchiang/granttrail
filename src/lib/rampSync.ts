@@ -14,7 +14,7 @@ export const RAMP_CARDS_READ = 12;
 /** Duration of one sync step; six steps run for about five seconds. */
 /** Award agreement and approved proposal found in the Ramp workspace's documents. */
 export const RAMP_AWARD_DOCUMENTS = 2;
-export const RAMP_SYNC_STEP_MS = 850;
+export const RAMP_SYNC_STEP_MS = 700;
 
 /** Payroll and indirect allocations are journal entries: no receipt, shared across objectives. */
 const SHARED_CATEGORIES: BudgetCategory[] = ["Personnel", "Indirect"];
@@ -75,16 +75,18 @@ export interface RampSyncStep {
 }
 
 /**
- * The seven staged sync steps, with counts derived from the summary.
+ * The eight staged sync steps (spend plus award parsing), with counts derived from the data.
  * @param s summary from summarizeRampSync
+ * @param checklistItems objectives plus milestones extracted from the award
  * @returns steps in display order; ids are unique and stable
  * Edge cases: the transactions, award and cards rows use workspace-level constants, every other count is from the data.
  */
-export function rampSyncSteps(s: RampSyncSummary): RampSyncStep[] {
+export function rampSyncSteps(s: RampSyncSummary, checklistItems: number): RampSyncStep[] {
   return [
     { id: "txns", label: "Fetching transactions", target: RAMP_WORKSPACE_TRANSACTIONS, unit: "scanned" },
     { id: "receipts", label: "Downloading receipts", target: s.receipts, unit: "receipts" },
-    { id: "award", label: "Finding award agreement and proposal", target: RAMP_AWARD_DOCUMENTS, unit: "files" },
+    { id: "award", label: "Reading award agreement and proposal", target: RAMP_AWARD_DOCUMENTS, unit: "files" },
+    { id: "checklist", label: "Extracting objectives, milestones and deadlines", target: checklistItems, unit: "items" },
     { id: "cards", label: "Reading cards and spend programs", target: RAMP_CARDS_READ, unit: "cards" },
     { id: "bills", label: "Pulling bills and vendor records", target: s.vendors, unit: "vendors" },
     { id: "budget", label: "Matching spend to award budget lines", target: s.count, unit: "coded to this award" },

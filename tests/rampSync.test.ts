@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { award } from "@/data/award";
+import { award, milestones, objectives } from "@/data/award";
 import { evidence } from "@/data/evidence";
 import { transactions } from "@/data/transactions";
 import {
@@ -36,20 +36,22 @@ describe("summarizeRampSync", () => {
 });
 
 describe("rampSyncSteps", () => {
-  it("has seven steps whose counts come from the summary", () => {
+  it("has eight steps, including award parsing, whose counts come from the data", () => {
     const s = summarizeRampSync(transactions);
-    const steps = rampSyncSteps(s);
-    expect(steps).toHaveLength(7);
+    const items = objectives.length + milestones.length;
+    const steps = rampSyncSteps(s, items);
+    expect(steps).toHaveLength(8);
     expect(steps[0]).toMatchObject({ label: "Fetching transactions", target: RAMP_WORKSPACE_TRANSACTIONS });
     expect(steps[1].target).toBe(s.receipts);
-    expect(steps[2]).toMatchObject({ id: "award", label: "Finding award agreement and proposal", target: RAMP_AWARD_DOCUMENTS });
-    expect(steps[3].target).toBe(RAMP_CARDS_READ);
-    expect(steps[5].target).toBe(14);
-    expect(steps[6].target).toBe(s.mapped);
-    expect(new Set(steps.map((x) => x.id)).size).toBe(7);
+    expect(steps[2]).toMatchObject({ id: "award", label: "Reading award agreement and proposal", target: RAMP_AWARD_DOCUMENTS });
+    expect(steps[3]).toMatchObject({ id: "checklist", label: "Extracting objectives, milestones and deadlines", target: items });
+    expect(steps[4].target).toBe(RAMP_CARDS_READ);
+    expect(steps[6].target).toBe(14);
+    expect(steps[7].target).toBe(s.mapped);
+    expect(new Set(steps.map((x) => x.id)).size).toBe(8);
   });
   it("total animation lasts 4 to 6 seconds", () => {
-    const ms = rampSyncSteps(summarizeRampSync(transactions)).length * RAMP_SYNC_STEP_MS;
+    const ms = rampSyncSteps(summarizeRampSync(transactions), 0).length * RAMP_SYNC_STEP_MS;
     expect(ms).toBeGreaterThanOrEqual(4000);
     expect(ms).toBeLessThanOrEqual(6000);
   });

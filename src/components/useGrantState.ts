@@ -15,7 +15,7 @@ import { initialEvidenceState, reviewQueue } from "@/lib/metrics";
 import { buildReport } from "@/lib/report";
 import type { EvidenceState, FlagStatus } from "@/lib/types";
 
-export type Phase = "upload" | "parsing" | "checklist" | "connect" | "app";
+export type Phase = "upload" | "checklist" | "connect" | "app";
 export type Tab = "overview" | "evidence" | "flags" | "report";
 
 /** Hook return value; see field comments in the implementation. */

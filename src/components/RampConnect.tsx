@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
-import { award } from "@/data/award";
+import { award, milestones, objectives } from "@/data/award";
 import { transactions } from "@/data/transactions";
 import { formatUSD } from "@/lib/format";
 import { logEvent } from "@/lib/log";
@@ -50,7 +50,7 @@ function Authorize({ onCancel, onAuthorize }: { onCancel: () => void; onAuthoriz
 
 /** Staged sync list; counts tick up on the running row. */
 function Syncing({ elapsed, onCancel }: { elapsed: number; onCancel: () => void }) {
-  const steps = useMemo(() => rampSyncSteps(summarizeRampSync(transactions)), []);
+  const steps = useMemo(() => rampSyncSteps(summarizeRampSync(transactions), objectives.length + milestones.length), []);
   const p = syncProgress(elapsed, steps.length, RAMP_SYNC_STEP_MS);
   const overall = Math.min(1, elapsed / (steps.length * RAMP_SYNC_STEP_MS));
   return (
@@ -84,7 +84,7 @@ function Done({ onDone }: { onDone: () => void }) {
   const rows = [
     `${s.count} transactions coded to ${award.awardNumber}, ${formatUSD(s.total)} total`,
     `${s.receipts} receipts downloaded (${s.itemized} itemized)`,
-    `Award agreement and approved proposal found (${award.pages}-page award)`,
+    `Award parsed: ${objectives.length} technical objectives, ${milestones.length} milestones and deadlines`,
     `${s.mapped} mapped to technical objectives`,
     `${s.shared} payroll and indirect entries shared across objectives`,
   ];
@@ -131,7 +131,7 @@ export function RampConnect({ onClose, onConnected }: { onClose: () => void; onC
   useEffect(() => {
     if (stage !== "syncing") return;
     const started = Date.now();
-    const total = rampSyncSteps(summarizeRampSync(transactions)).length * RAMP_SYNC_STEP_MS;
+    const total = rampSyncSteps(summarizeRampSync(transactions), objectives.length + milestones.length).length * RAMP_SYNC_STEP_MS;
     const id = setInterval(() => {
       const t = Date.now() - started;
       setElapsed(t);

@@ -1,10 +1,10 @@
 /**
  * First-run flow: connect Ramp (which pulls spend and the award documents),
- * watch the award parse, confirm the extracted checklist, then connect work tools.
+ * confirm the checklist extracted from the award, then connect work tools.
  */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { award, milestones, objectives } from "@/data/award";
 import { transactions } from "@/data/transactions";
 import { formatDate, formatUSD } from "@/lib/format";
@@ -13,17 +13,9 @@ import { RampConnect } from "./RampConnect";
 import { Badge, Button, Card, SourceMark } from "./ui/primitives";
 import type { Phase } from "./useGrantState";
 
-const PARSE_STEPS = [
-  `Reading award agreement from Ramp (${award.pages} pages)`,
-  "Extracting technical objectives",
-  "Finding milestones and reporting deadlines",
-  "Matching budget lines to Ramp spend categories",
-];
-const STEP_MS = 700;
-
 /**
  * Start screen: connect Ramp. The sync pulls spend, receipts and the award documents,
- * so closing the dialog after a finished sync moves on to parsing the award.
+ * so closing the dialog after a finished sync moves on to the extracted checklist.
  */
 function StartConnect({ onNext, ramp }: { onNext: () => void; ramp: RampLink }) {
   const [open, setOpen] = useState(false);
@@ -49,34 +41,6 @@ function StartConnect({ onNext, ramp }: { onNext: () => void; ramp: RampLink }) 
       </Card>
       {open && <RampConnect onClose={close} onConnected={ramp.onConnected} />}
     </div>
-  );
-}
-
-/** Staged parsing animation; advances itself when done. */
-function Parsing({ onDone }: { onDone: () => void }) {
-  const [step, setStep] = useState(0);
-  useEffect(() => {
-    if (step >= PARSE_STEPS.length) {
-      const t = setTimeout(onDone, 300);
-      return () => clearTimeout(t);
-    }
-    const t = setTimeout(() => setStep((s) => s + 1), STEP_MS);
-    return () => clearTimeout(t);
-  }, [step, onDone]);
-  return (
-    <Card className="mx-auto max-w-xl p-6 rise">
-      <div className="text-sm font-medium">award-{award.awardNumber}.pdf</div>
-      <ul className="mt-4 space-y-2.5 text-sm" aria-live="polite">
-        {PARSE_STEPS.map((label, i) => (
-          <li key={label} className={`flex items-center gap-2.5 ${i > step ? "text-faint" : ""}`}>
-            <span className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] ${i < step ? "bg-good text-white" : i === step ? "animate-pulse bg-accent" : "bg-border"}`}>
-              {i < step ? "✓" : ""}
-            </span>
-            {label}
-          </li>
-        ))}
-      </ul>
-    </Card>
   );
 }
 
@@ -194,8 +158,7 @@ function Connect({ onNext, ramp }: { onNext: () => void; ramp: RampLink }) {
  * @param ramp Ramp connection state, used by the start and connect steps
  */
 export function Onboarding({ phase, setPhase, ramp }: { phase: Exclude<Phase, "app">; setPhase: (p: Phase) => void; ramp: RampLink }) {
-  if (phase === "upload") return <StartConnect onNext={() => setPhase("parsing")} ramp={ramp} />;
-  if (phase === "parsing") return <Parsing onDone={() => setPhase("checklist")} />;
+  if (phase === "upload") return <StartConnect onNext={() => setPhase("checklist")} ramp={ramp} />;
   if (phase === "checklist") return <Checklist onNext={() => setPhase("connect")} />;
   return <Connect onNext={() => setPhase("app")} ramp={ramp} />;
 }
