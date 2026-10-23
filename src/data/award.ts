@@ -35,6 +35,7 @@ export const objectives: Objective[] = [
     sourceRef: "p. 6, Sec. 2.1",
     status: "complete",
     progress: 100,
+    openGap: null,
   },
   {
     id: "o2",
@@ -44,6 +45,7 @@ export const objectives: Objective[] = [
     sourceRef: "p. 7, Sec. 2.2",
     status: "in_progress",
     progress: 60,
+    openGap: "No result yet shows the model reaching 92% recall. Add the result, or explain the plan to close the gap.",
   },
   {
     id: "o3",
@@ -53,6 +55,7 @@ export const objectives: Objective[] = [
     sourceRef: "p. 8, Sec. 2.3",
     status: "at_risk",
     progress: 10,
+    openGap: "No evidence of validation on the partner's production line. Add results, or describe the delay and revised plan.",
   },
 ];
 

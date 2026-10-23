@@ -20,6 +20,8 @@ export interface Objective {
   status: ObjectiveStatus;
   /** 0 to 100, as judged from linked evidence. */
   progress: number;
+  /** What evidence is still missing while the objective is not complete. */
+  openGap: string | null;
 }
 
 /** A dated milestone or deadline from the award. */
@@ -81,6 +83,8 @@ export interface Evidence {
   title: string;
   author: string;
   excerpt: string;
+  /** Report-ready sentence summarizing what this item shows. */
+  claim: string;
   ref: string; // repo path, ticket key, or doc name
   /** AI-suggested objective; null when the model could not decide. */
   suggestedObjectiveId: string | null;
