@@ -84,6 +84,7 @@ function Done({ onDone }: { onDone: () => void }) {
   const rows = [
     `${s.count} transactions coded to ${award.awardNumber}, ${formatUSD(s.total)} total`,
     `${s.receipts} receipts downloaded (${s.itemized} itemized)`,
+    `Award agreement and approved proposal found (${award.pages}-page award)`,
     `${s.mapped} mapped to technical objectives`,
     `${s.shared} payroll and indirect entries shared across objectives`,
   ];

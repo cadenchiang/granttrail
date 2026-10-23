@@ -1,6 +1,6 @@
 /**
- * First-run flow: upload the award, watch it parse, confirm the extracted
- * checklist, then connect work tools.
+ * First-run flow: connect Ramp (which pulls spend and the award documents),
+ * watch the award parse, confirm the extracted checklist, then connect work tools.
  */
 "use client";
 
@@ -14,27 +14,40 @@ import { Badge, Button, Card, SourceMark } from "./ui/primitives";
 import type { Phase } from "./useGrantState";
 
 const PARSE_STEPS = [
-  `Reading award agreement (${award.pages} pages)`,
+  `Reading award agreement from Ramp (${award.pages} pages)`,
   "Extracting technical objectives",
   "Finding milestones and reporting deadlines",
   "Matching budget lines to Ramp spend categories",
 ];
 const STEP_MS = 700;
 
-/** Award drop zone. The demo always uses the sample award. */
-function Upload({ onNext }: { onNext: () => void }) {
+/**
+ * Start screen: connect Ramp. The sync pulls spend, receipts and the award documents,
+ * so closing the dialog after a finished sync moves on to parsing the award.
+ */
+function StartConnect({ onNext, ramp }: { onNext: () => void; ramp: RampLink }) {
+  const [open, setOpen] = useState(false);
+  const close = () => {
+    setOpen(false);
+    if (ramp.connected) onNext();
+  };
   return (
     <div className="mx-auto max-w-2xl rise">
       <h1 className="text-2xl font-semibold tracking-tight">Grant Reports</h1>
       <p className="mt-1 text-sm text-muted">
-        Upload your award. GrantTrail turns it into a checklist, tracks progress as your team works, and drafts the report with every claim linked to evidence.
+        Connect Ramp. GrantTrail pulls your grant spend and award documents, turns the award into a checklist, tracks progress as your team works, and drafts the report with every claim linked to evidence.
       </p>
-      <Card className="mt-6 border-dashed p-8 text-center">
-        <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-surface-2 text-lg ring-1 ring-border" aria-hidden>↑</div>
-        <div className="mt-3 text-sm font-medium">Drop your award agreement and approved proposal</div>
-        <div className="mt-1 text-xs text-muted">PDF. In this demo, a sample NSF SBIR Phase I award is used.</div>
-        <Button variant="primary" className="mt-5" onClick={onNext}>Use sample award</Button>
+      <Card className="mt-6 p-8 text-center">
+        <div className="flex justify-center"><SourceMark source="ramp" size={44} /></div>
+        <div className="mt-3 text-sm font-medium">Connect your Ramp account</div>
+        <div className="mt-1 text-xs text-muted">Transactions, receipts, cards, bills and the award agreement on file. Read-only.</div>
+        {ramp.connected ? (
+          <Button variant="primary" className="mt-5" onClick={onNext}>Continue</Button>
+        ) : (
+          <Button variant="primary" className="mt-5" onClick={() => { setOpen(true); logEvent("info", "ramp.connect_open", "user clicked Connect Ramp on start screen", {}, "Ramp consent dialog shown"); }}>Connect Ramp</Button>
+        )}
       </Card>
+      {open && <RampConnect onClose={close} onConnected={ramp.onConnected} />}
     </div>
   );
 }
@@ -178,10 +191,10 @@ function Connect({ onNext, ramp }: { onNext: () => void; ramp: RampLink }) {
 /**
  * Renders the step for the current onboarding phase.
  * @param phase must not be "app"; the caller renders the dashboard instead
- * @param ramp Ramp connection state, used by the connect step
+ * @param ramp Ramp connection state, used by the start and connect steps
  */
 export function Onboarding({ phase, setPhase, ramp }: { phase: Exclude<Phase, "app">; setPhase: (p: Phase) => void; ramp: RampLink }) {
-  if (phase === "upload") return <Upload onNext={() => setPhase("parsing")} />;
+  if (phase === "upload") return <StartConnect onNext={() => setPhase("parsing")} ramp={ramp} />;
   if (phase === "parsing") return <Parsing onDone={() => setPhase("checklist")} />;
   if (phase === "checklist") return <Checklist onNext={() => setPhase("connect")} />;
   return <Connect onNext={() => setPhase("app")} ramp={ramp} />;

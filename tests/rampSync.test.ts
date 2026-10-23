@@ -4,7 +4,7 @@ import { evidence } from "@/data/evidence";
 import { transactions } from "@/data/transactions";
 import {
   RAMP_CARDS_READ, RAMP_SYNC_STEP_MS, RAMP_WORKSPACE_TRANSACTIONS, grantFieldLabel,
-  rampSyncSteps, sourcesUsed, summarizeRampSync, syncProgress, tickCount,
+  RAMP_AWARD_DOCUMENTS, rampSyncSteps, sourcesUsed, summarizeRampSync, syncProgress, tickCount,
 } from "@/lib/rampSync";
 import type { Transaction } from "@/lib/types";
 
@@ -36,16 +36,17 @@ describe("summarizeRampSync", () => {
 });
 
 describe("rampSyncSteps", () => {
-  it("has six steps whose counts come from the summary", () => {
+  it("has seven steps whose counts come from the summary", () => {
     const s = summarizeRampSync(transactions);
     const steps = rampSyncSteps(s);
-    expect(steps).toHaveLength(6);
+    expect(steps).toHaveLength(7);
     expect(steps[0]).toMatchObject({ label: "Fetching transactions", target: RAMP_WORKSPACE_TRANSACTIONS });
     expect(steps[1].target).toBe(s.receipts);
-    expect(steps[2].target).toBe(RAMP_CARDS_READ);
-    expect(steps[4].target).toBe(14);
-    expect(steps[5].target).toBe(s.mapped);
-    expect(new Set(steps.map((x) => x.id)).size).toBe(6);
+    expect(steps[2]).toMatchObject({ id: "award", label: "Finding award agreement and proposal", target: RAMP_AWARD_DOCUMENTS });
+    expect(steps[3].target).toBe(RAMP_CARDS_READ);
+    expect(steps[5].target).toBe(14);
+    expect(steps[6].target).toBe(s.mapped);
+    expect(new Set(steps.map((x) => x.id)).size).toBe(7);
   });
   it("total animation lasts 4 to 6 seconds", () => {
     const ms = rampSyncSteps(summarizeRampSync(transactions)).length * RAMP_SYNC_STEP_MS;
