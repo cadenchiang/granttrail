@@ -29,6 +29,8 @@ export function useGrantState() {
   const [reportGenerated, setReportGenerated] = useState(false);
   const [reviewed, setReviewed] = useState<Record<string, boolean>>({});
   const [approved, setApproved] = useState(false);
+  const [rampSyncedAt, setRampSyncedAt] = useState<string | null>(null);
+  const rampConnected = rampSyncedAt !== null;
 
   const queue = useMemo(() => reviewQueue(evidence, evidenceState), [evidenceState]);
   const flags = useMemo(
@@ -109,6 +111,12 @@ export function useGrantState() {
     logEvent("info", "report.approve", "user approved draft", {}, "Report marked ready to submit (GrantTrail never submits for you)");
   }, [sections, reviewed]);
 
+  /** Records a finished (simulated) Ramp sync; called by the Ramp connect modal. */
+  const connectRamp = useCallback((syncedAt: string, transactionCount: number) => {
+    setRampSyncedAt(syncedAt);
+    logEvent("info", "ramp.connected", "simulated Ramp sync finished", { syncedAt, transactionCount }, "Ramp shows as connected; its sample transactions feed the report");
+  }, []);
+
   const reset = useCallback(() => {
     setPhaseRaw("upload");
     setTabRaw("overview");
@@ -117,6 +125,7 @@ export function useGrantState() {
     setReportGenerated(false);
     setReviewed({});
     setApproved(false);
+    setRampSyncedAt(null);
     logEvent("info", "demo.reset", "user reset demo", {}, "All demo state cleared");
   }, []);
 
@@ -126,6 +135,7 @@ export function useGrantState() {
     flags, flagStatus, openFlags, setFlag,
     transactions, sections, citationCtx,
     reportGenerated, generateReport, reviewed, toggleReviewed, approved, approve,
+    rampConnected, rampSyncedAt, connectRamp,
     reset,
   };
 }

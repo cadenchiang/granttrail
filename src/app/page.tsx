@@ -12,7 +12,7 @@ export default function Home() {
   const s = useGrantState();
   return (
     <AppShell onReset={s.reset}>
-      {s.phase === "app" ? <Dashboard s={s} /> : <Onboarding phase={s.phase} setPhase={s.setPhase} />}
+      {s.phase === "app" ? <Dashboard s={s} /> : <Onboarding phase={s.phase} setPhase={s.setPhase} ramp={{ connected: s.rampConnected, onConnected: s.connectRamp }} />}
     </AppShell>
   );
 }

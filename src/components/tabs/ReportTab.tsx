@@ -5,14 +5,17 @@
 
 import { useEffect, useState } from "react";
 import { award } from "@/data/award";
+import { evidence } from "@/data/evidence";
+import { transactions as sampleTransactions } from "@/data/transactions";
 import { resolveCitation } from "@/lib/citations";
 import { logEvent } from "@/lib/log";
+import { sourcesUsed, summarizeRampSync } from "@/lib/rampSync";
 import { countGaps, gapTarget, phaseTwoHeadStart, toMarkdown } from "@/lib/report";
 import { Citation } from "../ui/Citation";
-import { Badge, Button, Card } from "../ui/primitives";
+import { Badge, Button, Card, SourceMark } from "../ui/primitives";
 import type { GrantState } from "../useGrantState";
 
-const DRAFT_STEPS = ["Retrieving linked evidence", "Writing each section from cited records", "Checking every claim has a source"];
+const DRAFT_STEPS = ["Pulling synced Ramp transactions and receipts", "Retrieving linked evidence", "Writing each section from cited records", "Checking every claim has a source"];
 const REPORT_TITLE = `${award.program} progress report: ${award.awardNumber}`;
 
 /** Download the draft as Markdown; failures are logged and shown, never swallowed. */
@@ -36,8 +39,24 @@ function exportMarkdown(s: GrantState): string | null {
   }
 }
 
+/**
+ * Compact strip of the records the draft is built from.
+ * @param rampConnected whether the simulated Ramp sync has run
+ */
+function SourcesUsed({ rampConnected }: { rampConnected: boolean }) {
+  const rows = sourcesUsed(summarizeRampSync(sampleTransactions), evidence, rampConnected);
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+      <span className="font-medium text-text">Sources used</span>
+      {rows.map((r) => (
+        <span key={r.source} className="inline-flex items-center gap-1.5"><SourceMark source={r.source} size={14} />{r.label}</span>
+      ))}
+    </div>
+  );
+}
+
 /** Pre-draft state with a short staged animation. */
-function DraftStart({ onDraft }: { onDraft: () => void }) {
+function DraftStart({ onDraft, rampConnected }: { onDraft: () => void; rampConnected: boolean }) {
   const [step, setStep] = useState(-1);
   useEffect(() => {
     if (step < 0) return;
@@ -51,6 +70,7 @@ function DraftStart({ onDraft }: { onDraft: () => void }) {
       <p className="mt-1 text-sm text-muted">
         Every sentence links to a Ramp transaction, commit, ticket or doc. Where evidence is missing, the draft shows a gap instead of making something up.
       </p>
+      <div className="mt-4 flex justify-center"><SourcesUsed rampConnected={rampConnected} /></div>
       {step < 0 ? (
         <Button variant="primary" className="mt-5" onClick={() => setStep(0)}>Draft report</Button>
       ) : (
@@ -70,7 +90,7 @@ function DraftStart({ onDraft }: { onDraft: () => void }) {
 /** Report tab. */
 export function ReportTab({ s }: { s: GrantState }) {
   const [exportError, setExportError] = useState<string | null>(null);
-  if (!s.reportGenerated) return <DraftStart onDraft={s.generateReport} />;
+  if (!s.reportGenerated) return <DraftStart onDraft={s.generateReport} rampConnected={s.rampConnected} />;
 
   const numbers = new Map<string, number>();
   const num = (id: string) => {
@@ -107,6 +127,7 @@ export function ReportTab({ s }: { s: GrantState }) {
       <Card className="p-6 sm:p-8">
         <div className="text-xs text-muted">{award.agency} · {award.program} · {award.company}</div>
         <h2 className="mt-1 text-lg font-semibold tracking-tight">{award.title}</h2>
+        <div className="mt-2"><SourcesUsed rampConnected={s.rampConnected} /></div>
         <div className="mt-6 space-y-7">
           {s.sections.map((sec) => (
             <section key={sec.id} aria-labelledby={`h-${sec.id}`}>

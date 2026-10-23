@@ -6,8 +6,10 @@
 
 import { useEffect, useState } from "react";
 import { award, milestones, objectives } from "@/data/award";
+import { transactions } from "@/data/transactions";
 import { formatDate, formatUSD } from "@/lib/format";
 import { logEvent } from "@/lib/log";
+import { RampConnect } from "./RampConnect";
 import { Badge, Button, Card, SourceMark } from "./ui/primitives";
 import type { Phase } from "./useGrantState";
 
@@ -115,10 +117,29 @@ const TOOLS = [
   { id: "docs", name: "Google Docs", note: "Design docs, eval notes, meeting notes" },
 ] as const;
 
-/** Simulated tool connections; Ramp is already connected. */
-function Connect({ onNext }: { onNext: () => void }) {
+/** Ramp connection state passed down from useGrantState. */
+export interface RampLink {
+  connected: boolean;
+  onConnected: (syncedAt: string, count: number) => void;
+}
+
+/**
+ * Simulated tool connections. Ramp goes through its own consent and sync modal;
+ * "Connect all" connects the work tools and opens the Ramp flow if Ramp is still unconnected.
+ */
+function Connect({ onNext, ramp }: { onNext: () => void; ramp: RampLink }) {
   const [connected, setConnected] = useState<Record<string, boolean>>({});
-  const all = TOOLS.every((t) => connected[t.id]);
+  const [rampOpen, setRampOpen] = useState(false);
+  const all = ramp.connected && TOOLS.every((t) => connected[t.id]);
+  const openRamp = (cause: string) => {
+    setRampOpen(true);
+    logEvent("info", "ramp.connect_open", cause, {}, "Ramp consent dialog shown");
+  };
+  const connectAll = () => {
+    setConnected({ github: true, linear: true, docs: true });
+    logEvent("info", "tool.connect_all", "user clicked Connect all", { tools: TOOLS.map((t) => t.id), rampConnected: ramp.connected }, ramp.connected ? "All work tools connected" : "Work tools connected; Ramp still needs consent");
+    if (!ramp.connected) openRamp("Connect all with Ramp unconnected");
+  };
   return (
     <div className="mx-auto max-w-xl rise">
       <h1 className="text-xl font-semibold tracking-tight">Connect where the work happens</h1>
@@ -126,8 +147,12 @@ function Connect({ onNext }: { onNext: () => void }) {
       <Card className="mt-5 divide-y divide-border">
         <div className="flex items-center gap-3 px-4 py-3">
           <SourceMark source="ramp" />
-          <div className="flex-1 text-sm"><div className="font-medium">Ramp</div><div className="text-muted">Spend coded to this award</div></div>
-          <Badge tone="good">Connected</Badge>
+          <div className="flex-1 text-sm">
+            <div className="font-medium">Ramp</div>
+            <div className="text-muted">Transactions, receipts, cards and bills coded to this award</div>
+            {ramp.connected && <div className="mt-0.5 text-xs text-good">Synced just now · {transactions.length} transactions</div>}
+          </div>
+          {ramp.connected ? <Badge tone="good">Connected</Badge> : <Button variant="primary" onClick={() => openRamp("user clicked Connect Ramp")}>Connect Ramp</Button>}
         </div>
         {TOOLS.map((t) => (
           <div key={t.id} className="flex items-center gap-3 px-4 py-3">
@@ -142,9 +167,10 @@ function Connect({ onNext }: { onNext: () => void }) {
         ))}
       </Card>
       <div className="mt-6 flex items-center justify-end gap-2">
-        {!all && <Button variant="ghost" onClick={() => setConnected({ github: true, linear: true, docs: true })}>Connect all</Button>}
+        {!all && <Button variant="ghost" onClick={connectAll}>Connect all</Button>}
         <Button variant="primary" disabled={!all} onClick={onNext}>Map work to objectives</Button>
       </div>
+      {rampOpen && <RampConnect onClose={() => setRampOpen(false)} onConnected={ramp.onConnected} />}
     </div>
   );
 }
@@ -152,10 +178,11 @@ function Connect({ onNext }: { onNext: () => void }) {
 /**
  * Renders the step for the current onboarding phase.
  * @param phase must not be "app"; the caller renders the dashboard instead
+ * @param ramp Ramp connection state, used by the connect step
  */
-export function Onboarding({ phase, setPhase }: { phase: Exclude<Phase, "app">; setPhase: (p: Phase) => void }) {
+export function Onboarding({ phase, setPhase, ramp }: { phase: Exclude<Phase, "app">; setPhase: (p: Phase) => void; ramp: RampLink }) {
   if (phase === "upload") return <Upload onNext={() => setPhase("parsing")} />;
   if (phase === "parsing") return <Parsing onDone={() => setPhase("checklist")} />;
   if (phase === "checklist") return <Checklist onNext={() => setPhase("connect")} />;
-  return <Connect onNext={() => setPhase("app")} />;
+  return <Connect onNext={() => setPhase("app")} ramp={ramp} />;
 }
