@@ -33,8 +33,12 @@ export const objectives: Objective[] = [
     title: "Build a labeled scan dataset",
     target: "20,000 labeled ultrasound scans across 3 cell chemistries",
     sourceRef: "p. 6, Sec. 2.1",
-    status: "complete",
-    progress: 100,
+    steps: [
+      { id: "o1-rig", label: "Capture rig and labeling schema ready", weight: 20 },
+      { id: "o1-pipeline", label: "Export pipeline tags scans by chemistry", weight: 15 },
+      { id: "o1-label", label: "All three chemistries labeled", weight: 30 },
+      { id: "o1-card", label: "Dataset of 20,000+ scans documented", weight: 35 },
+    ],
     openGap: null,
   },
   {
@@ -43,8 +47,12 @@ export const objectives: Objective[] = [
     title: "Train the defect-detection model",
     target: "At least 92% recall on held-out cells",
     sourceRef: "p. 7, Sec. 2.2",
-    status: "in_progress",
-    progress: 60,
+    steps: [
+      { id: "o2-baseline", label: "Baseline classifier trained", weight: 20 },
+      { id: "o2-improve", label: "Improved model beats baseline", weight: 25 },
+      { id: "o2-eval", label: "Held-out evaluation across chemistries", weight: 20 },
+      { id: "o2-target", label: "Held-out recall reaches 92%", weight: 35 },
+    ],
     openGap: "No result yet shows the model reaching 92% recall. Add the result, or explain the plan to close the gap.",
   },
   {
@@ -53,8 +61,13 @@ export const objectives: Objective[] = [
     title: "Validate inline at a pilot partner",
     target: "Scan at least 30 cells per minute on a production line",
     sourceRef: "p. 8, Sec. 2.3",
-    status: "at_risk",
-    progress: 10,
+    steps: [
+      { id: "o3-scope", label: "Pilot scoped with partner", weight: 15 },
+      { id: "o3-dsa", label: "Data-sharing agreement signed", weight: 20 },
+      { id: "o3-bench", label: "Bench throughput reaches 30 cells/min", weight: 25 },
+      { id: "o3-mount", label: "Conveyor mount installed on partner line", weight: 15 },
+      { id: "o3-line", label: "30 cells/min validated on the production line", weight: 25 },
+    ],
     openGap: "No evidence of validation on the partner's production line. Add results, or describe the delay and revised plan.",
   },
 ];

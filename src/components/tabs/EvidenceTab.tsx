@@ -39,6 +39,29 @@ function MappingBadge({ item, s }: { item: Evidence; s: GrantState }) {
   return <Badge tone={item.confidence < REVIEW_CONFIDENCE ? "warn" : "neutral"}>AI {Math.round(item.confidence * 100)}%</Badge>;
 }
 
+/**
+ * The AI's reason for its match, plus the work step this item completes when it
+ * is mapped to that step's objective. Shown on every item so confirming is a quick check.
+ */
+function WhyLine({ item, s }: { item: Evidence; s: GrantState }) {
+  const mapped = s.objectives.find((o) => o.id === s.evidenceState[item.id]?.objectiveId);
+  const step = mapped?.steps.find((st) => st.id === item.completesStep);
+  return (
+    <div className="mt-1.5 space-y-0.5 text-xs">
+      <div className="text-muted"><span className="font-medium text-text">Why:</span> {item.rationale}</div>
+      {step && (
+        <div className={step.doneBy === item.id ? "text-good" : "text-muted"}>
+          {step.doneBy === item.id
+            ? `✓ Completes ${mapped!.code} step: ${step.label} (+${step.weight}%)`
+            : step.doneBy
+              ? `Supports ${mapped!.code} step: ${step.label} (already done by another item)`
+              : `Would complete ${mapped!.code} step: ${step.label} (+${step.weight}%) once confirmed`}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** One evidence row. */
 function Row({ item, s }: { item: Evidence; s: GrantState }) {
   return (
@@ -48,6 +71,7 @@ function Row({ item, s }: { item: Evidence; s: GrantState }) {
         <div className="text-sm font-medium">{item.title}</div>
         <div className="mt-0.5 text-xs text-muted">{item.ref} · {item.author} · {formatDate(item.date)}</div>
         <div className="mt-1 text-sm text-muted">{item.excerpt}</div>
+        <WhyLine item={item} s={s} />
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <MappingBadge item={item} s={s} />
@@ -84,6 +108,7 @@ export function EvidenceTab({ s }: { s: GrantState }) {
                     <div className="mt-1 text-xs text-muted">
                       {suggested ? <>AI guess: {suggested.code} ({Math.round(item.confidence * 100)}% confident)</> : "AI could not match this to an objective"}
                     </div>
+                    <WhyLine item={item} s={s} />
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
                     {suggested && <Button variant="primary" onClick={() => s.assignEvidence(item.id, suggested.id)}>Confirm {suggested.code}</Button>}

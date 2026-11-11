@@ -96,8 +96,8 @@ export function evidenceFor(objectiveId: string, items: Evidence[], state: Recor
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
-export interface ObjectiveSummary {
-  objective: Objective;
+export interface ObjectiveSummary<O extends Objective = Objective> {
+  objective: O;
   evidenceCount: number;
   spend: number;
   lastActivity: string | null;
@@ -108,13 +108,13 @@ export interface ObjectiveSummary {
  * Per-objective rollup of evidence and directly coded spend.
  * Shared spend (objectiveId null) is not split across objectives.
  */
-export function objectiveSummaries(
-  objectives: Objective[],
+export function objectiveSummaries<O extends Objective>(
+  objectives: O[],
   items: Evidence[],
   state: Record<string, EvidenceState>,
   txns: Transaction[],
   today: string,
-): ObjectiveSummary[] {
+): ObjectiveSummary<O>[] {
   return objectives.map((o) => {
     const mine = evidenceFor(o.id, items, state);
     const lastActivity = mine[0]?.date ?? null;

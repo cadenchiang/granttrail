@@ -4,7 +4,7 @@
  */
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { award, DEMO_TODAY, milestones, objectives } from "@/data/award";
 import { evidence } from "@/data/evidence";
 import { transactions as rawTransactions } from "@/data/transactions";
@@ -12,6 +12,7 @@ import { resolveCitation, type CitationContext } from "@/lib/citations";
 import { applyResolutions, detectFlags } from "@/lib/flags";
 import { logEvent } from "@/lib/log";
 import { initialEvidenceState, reviewQueue } from "@/lib/metrics";
+import { deriveObjectives, diffProgress, type ProgressChange } from "@/lib/progress";
 import { buildReport } from "@/lib/report";
 import type { EvidenceState, FlagStatus } from "@/lib/types";
 
@@ -31,11 +32,26 @@ export function useGrantState() {
   const [approved, setApproved] = useState(false);
   const [rampSyncedAt, setRampSyncedAt] = useState<string | null>(null);
   const rampConnected = rampSyncedAt !== null;
+  /** Most recent progress change caused by a mapping decision, shown as a notice. */
+  const [progressNotice, setProgressNotice] = useState<{ key: number; changes: ProgressChange[] } | null>(null);
+
+  // Status and progress come from evidence, so every mapping decision can move them.
+  const liveObjectives = useMemo(
+    () => deriveObjectives(objectives, evidence, evidenceState, milestones, DEMO_TODAY),
+    [evidenceState],
+  );
+
+  // Notices clear themselves after a few seconds.
+  useEffect(() => {
+    if (!progressNotice) return;
+    const t = setTimeout(() => setProgressNotice(null), 7000);
+    return () => clearTimeout(t);
+  }, [progressNotice]);
 
   const queue = useMemo(() => reviewQueue(evidence, evidenceState), [evidenceState]);
   const flags = useMemo(
-    () => detectFlags({ objectives, milestones, evidence, evidenceState, transactions: rawTransactions, today: DEMO_TODAY, reviewCount: queue.length }),
-    [evidenceState, queue.length],
+    () => detectFlags({ objectives: liveObjectives, milestones, evidence, evidenceState, transactions: rawTransactions, today: DEMO_TODAY, reviewCount: queue.length }),
+    [liveObjectives, evidenceState, queue.length],
   );
   // Every detected flag gets a status; undecided ones are open. The review flag clears itself.
   const flagStatus = useMemo<Record<string, FlagStatus>>(
@@ -44,8 +60,8 @@ export function useGrantState() {
   );
   const transactions = useMemo(() => applyResolutions(rawTransactions, flagStatus), [flagStatus]);
   const sections = useMemo(
-    () => buildReport({ award, objectives, evidence, evidenceState, transactions, flagStatus, today: DEMO_TODAY }),
-    [evidenceState, transactions, flagStatus],
+    () => buildReport({ award, objectives: liveObjectives, evidence, evidenceState, transactions, flagStatus, today: DEMO_TODAY }),
+    [liveObjectives, evidenceState, transactions, flagStatus],
   );
   const citationCtx: CitationContext = useMemo(() => ({ award, evidence, transactions }), [transactions]);
   const openFlags = flags.filter((f) => flagStatus[f.id] === "open");
@@ -75,10 +91,13 @@ export function useGrantState() {
       logEvent("error", "evidence.assign_failed", "unknown objective id", { id, objectiveId }, "No mapping changed");
       return;
     }
-    setEvidenceState((s) => ({ ...s, [id]: { objectiveId, confirmed: true } }));
-    logEvent("info", "evidence.assign", "user confirmed or changed mapping", { id, objectiveId }, "Overview, flags and report now use this mapping");
+    const next = { ...evidenceState, [id]: { objectiveId, confirmed: true } };
+    const changes = diffProgress(liveObjectives, deriveObjectives(objectives, evidence, next, milestones, DEMO_TODAY));
+    setEvidenceState(next);
+    if (changes.length > 0) setProgressNotice({ key: Date.now(), changes });
+    logEvent("info", "evidence.assign", "user confirmed or changed mapping", { id, objectiveId, progressChanges: changes }, "Overview, flags and report now use this mapping");
     invalidateApproval("evidence mapping changed");
-  }, [invalidateApproval]);
+  }, [evidenceState, liveObjectives, invalidateApproval]);
 
   const setFlag = useCallback((id: string, status: FlagStatus) => {
     setFlagDecisions((d) => ({ ...d, [id]: status }));
@@ -126,11 +145,13 @@ export function useGrantState() {
     setReviewed({});
     setApproved(false);
     setRampSyncedAt(null);
+    setProgressNotice(null);
     logEvent("info", "demo.reset", "user reset demo", {}, "All demo state cleared");
   }, []);
 
   return {
     phase, setPhase, tab, setTab,
+    objectives: liveObjectives, progressNotice, dismissProgressNotice: () => setProgressNotice(null),
     evidenceState, assignEvidence, queue,
     flags, flagStatus, openFlags, setFlag,
     transactions, sections, citationCtx,

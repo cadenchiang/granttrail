@@ -11,6 +11,8 @@ export const evidence: Evidence[] = [
     excerpt: "Rig captures A-scan and B-scan per cell. Labels: void, delamination, foreign particle, none.",
     claim: "The team built a scan capture rig and a four-class labeling schema (void, delamination, foreign particle, none).",
     suggestedObjectiveId: "o1", confidence: 0.94,
+    rationale: "Describes the capture rig and label classes that the O1 work plan starts with.",
+    completesStep: "o1-rig",
   },
   {
     id: "e2", source: "github", date: "2026-07-29", author: "Marcus T.",
@@ -18,6 +20,8 @@ export const evidence: Evidence[] = [
     excerpt: "Exports labeled scans to parquet, tags LFP / NMC / LCO, dedupes repeat captures.",
     claim: "A dataset export pipeline tags each scan by chemistry and removes repeat captures.",
     suggestedObjectiveId: "o1", confidence: 0.91,
+    rationale: "Exports scans tagged by chemistry; O1 requires scans across three chemistries.",
+    completesStep: "o1-pipeline",
   },
   {
     id: "e3", source: "linear", date: "2026-08-27", author: "Priya N.",
@@ -25,6 +29,8 @@ export const evidence: Evidence[] = [
     excerpt: "Closed. 6,940 NMC and 5,212 LCO scans labeled, double-reviewed on 10% sample.",
     claim: "Labeling of the NMC and LCO scans was completed with double review on a 10% sample.",
     suggestedObjectiveId: "o1", confidence: 0.96,
+    rationale: "Closes labeling for NMC and LCO, two of the three chemistries O1 names.",
+    completesStep: "o1-label",
   },
   {
     id: "e4", source: "docs", date: "2026-08-30", author: "Priya N.",
@@ -32,6 +38,8 @@ export const evidence: Evidence[] = [
     excerpt: "20,412 labeled scans across LFP, NMC and LCO. Inter-rater agreement 0.91 (Cohen's kappa).",
     claim: "The finished dataset contains 20,412 labeled scans across LFP, NMC and LCO cells, with inter-rater agreement of 0.91.",
     suggestedObjectiveId: "o1", confidence: 0.98,
+    rationale: "Reports 20,412 labeled scans, which meets the O1 target of 20,000.",
+    completesStep: "o1-card",
   },
   {
     id: "e5", source: "github", date: "2026-09-04", author: "Marcus T.",
@@ -39,6 +47,8 @@ export const evidence: Evidence[] = [
     excerpt: "Baseline ResNet-18 on B-scans. Held-out recall 81.2%, precision 77.5%.",
     claim: "A baseline classifier reached 81.2% recall on held-out cells.",
     suggestedObjectiveId: "o2", confidence: 0.93,
+    rationale: "Reports held-out recall, the metric the O2 target is written in.",
+    completesStep: "o2-baseline",
   },
   {
     id: "e6", source: "docs", date: "2026-09-11", author: "Dana K.",
@@ -46,6 +56,8 @@ export const evidence: Evidence[] = [
     excerpt: "Partner line runs 34 cells/min. Need conveyor mount and a signed data-sharing agreement first.",
     claim: "The pilot partner line runs 34 cells per minute; a conveyor mount and a data-sharing agreement are prerequisites.",
     suggestedObjectiveId: "o3", confidence: 0.89,
+    rationale: "Covers the pilot partner's production line, where O3 validation happens.",
+    completesStep: "o3-scope",
   },
   {
     id: "e7", source: "docs", date: "2026-09-18", author: "Marcus T.",
@@ -53,6 +65,7 @@ export const evidence: Evidence[] = [
     excerpt: "New augmentation shifts echo phase per layer to simulate thickness variation. Not seen in prior work we reviewed.",
     claim: "The team developed a phase-shift augmentation method that simulates thickness variation in ultrasound echoes.",
     suggestedObjectiveId: "o2", confidence: 0.86,
+    rationale: "Method note on training-data augmentation, part of the O2 model work.",
   },
   {
     id: "e8", source: "github", date: "2026-09-25", author: "Marcus T.",
@@ -60,6 +73,8 @@ export const evidence: Evidence[] = [
     excerpt: "Held-out recall 86.0% (+4.8 pts over baseline).",
     claim: "Adding phase-shift augmentation and an attention head raised held-out recall to 86.0%.",
     suggestedObjectiveId: "o2", confidence: 0.92,
+    rationale: "Raises held-out recall to 86.0%, moving toward the 92% O2 target.",
+    completesStep: "o2-improve",
   },
   {
     id: "e9", source: "linear", date: "2026-10-02", author: "Dana K.",
@@ -67,6 +82,7 @@ export const evidence: Evidence[] = [
     excerpt: "Blocked: partner legal review. No ETA.",
     claim: "The data-sharing agreement with the pilot partner is in legal review.",
     suggestedObjectiveId: "o3", confidence: 0.84,
+    rationale: "The data-sharing agreement is a prerequisite for the O3 pilot.",
   },
   {
     id: "e10", source: "docs", date: "2026-10-14", author: "Marcus T.",
@@ -74,6 +90,8 @@ export const evidence: Evidence[] = [
     excerpt: "Held-out recall 88.4%, precision 84.1%. Misses concentrated in thin LCO cells.",
     claim: "As of week 15, held-out recall is 88.4% with 84.1% precision; remaining misses are concentrated in thin LCO cells.",
     suggestedObjectiveId: "o2", confidence: 0.95,
+    rationale: "Weekly eval reports recall against the 92% O2 target.",
+    completesStep: "o2-eval",
   },
   {
     id: "e11", source: "linear", date: "2026-10-16", author: "Marcus T.",
@@ -81,6 +99,7 @@ export const evidence: Evidence[] = [
     excerpt: "In progress. Targeting the remaining recall gap before the Oct 31 milestone.",
     claim: "Hard negative mining on thin LCO cells is underway to close the remaining recall gap.",
     suggestedObjectiveId: "o2", confidence: 0.9,
+    rationale: "Aims at the remaining recall gap before the O2 milestone on Oct 31.",
   },
   {
     id: "e12", source: "github", date: "2026-10-17", author: "Sam R.",
@@ -88,6 +107,7 @@ export const evidence: Evidence[] = [
     excerpt: "Moves training config to YAML. No metric change.",
     claim: "Training configuration moved to versioned YAML files.",
     suggestedObjectiveId: null, confidence: 0.31,
+    rationale: "Config refactor with no metric change; it matches no objective's target.",
   },
   {
     id: "e13", source: "docs", date: "2026-10-19", author: "Dana K.",
@@ -95,6 +115,7 @@ export const evidence: Evidence[] = [
     excerpt: "Bench timing suggests 22 cells/min on current hardware. Needs batching to reach 30.",
     claim: "Bench timing on current hardware estimated 22 cells per minute before batching.",
     suggestedObjectiveId: "o3", confidence: 0.58,
+    rationale: "Cells/min is the O3 unit, but this is a bench estimate below 30, not a line test.",
   },
   {
     id: "e14", source: "github", date: "2026-10-21", author: "Sam R.",
@@ -102,5 +123,7 @@ export const evidence: Evidence[] = [
     excerpt: "Batches 8 scans per forward pass. Bench throughput 31 cells/min on the workstation.",
     claim: "Batched inference reached 31 cells per minute on the bench workstation.",
     suggestedObjectiveId: "o2", confidence: 0.55,
+    rationale: "It sits in the model repo, which is mostly O2 work, but cells/min is the O3 target unit.",
+    completesStep: "o3-bench",
   },
 ];

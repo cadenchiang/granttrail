@@ -5,11 +5,12 @@
 import { EQUIPMENT_THRESHOLD } from "./flags";
 import { formatPct, formatUSD } from "./format";
 import { budgetUsed, evidenceFor, isReportable, spendByCategory, timeElapsed, totalSpent } from "./metrics";
-import type { Award, Claim, Evidence, EvidenceState, FlagStatus, Gap, Objective, ReportSection, Transaction } from "./types";
+import type { Award, Claim, Evidence, EvidenceState, FlagStatus, Gap, LiveObjective, ObjectiveStatus, ReportSection, Transaction } from "./types";
 
 export interface ReportInput {
   award: Award;
-  objectives: Objective[];
+  /** Objectives with status and progress derived from evidence (see progress.ts). */
+  objectives: LiveObjective[];
   evidence: Evidence[];
   evidenceState: Record<string, EvidenceState>;
   /** Transactions after flag resolutions are applied. */
@@ -19,7 +20,7 @@ export interface ReportInput {
   today: string;
 }
 
-const STATUS_WORDS: Record<Objective["status"], string> = {
+const STATUS_WORDS: Record<ObjectiveStatus, string> = {
   complete: "complete",
   in_progress: "in progress",
   at_risk: "behind schedule",
@@ -31,7 +32,7 @@ function resolved(status: Record<string, FlagStatus>, id: string): boolean {
 }
 
 /** One section per objective: status line, dated evidence claims, open gap. */
-function objectiveSection(o: Objective, input: ReportInput): ReportSection {
+function objectiveSection(o: LiveObjective, input: ReportInput): ReportSection {
   const items = evidenceFor(o.id, input.evidence, input.evidenceState).filter((e) => isReportable(e, input.evidenceState)).reverse();
   const claims: Claim[] = [
     { text: `Target: ${o.target}. Status: ${STATUS_WORDS[o.status]} (${o.progress}%).`, citations: [`award:${o.sourceRef}`] },
@@ -96,9 +97,9 @@ export function buildReport(input: ReportInput): ReportSection[] {
     const e = input.evidence.find((x) => x.id === flagId.slice("invention-".length));
     if (!e) continue;
     if (resolved(flagStatus, flagId)) {
-      inventions.claims.push({ text: `A possible subject invention was identified (${e.title.replace(/^Method note:\s*/i, "")}) and an iEdison disclosure has been started.`, citations: [e.id] });
+      inventions.claims.push({ text: `A possible subject invention was identified (${e.title.replace(/^Method note:\s*/i, "")}) and sent to counsel to decide whether it must be disclosed.`, citations: [e.id] });
     } else {
-      inventions.gaps.push({ id: `gap-${flagId}`, text: `Possible invention found (${e.title.replace(/^Method note:\s*/i, "")}). Decide whether to disclose it before the report says anything about inventions.` });
+      inventions.gaps.push({ id: `gap-${flagId}`, text: `Possible invention found (${e.title.replace(/^Method note:\s*/i, "")}). Have counsel decide whether it is a subject invention before the report says anything about inventions.` });
     }
   }
   if (inventionIds.length === 0) inventions.claims.push({ text: "No subject inventions were identified during this period.", citations: ["ledger"] });

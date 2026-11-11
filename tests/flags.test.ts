@@ -4,9 +4,11 @@ import { evidence } from "@/data/evidence";
 import { transactions } from "@/data/transactions";
 import { applyResolutions, detectFlags, type FlagInput } from "@/lib/flags";
 import { initialEvidenceState, totalSpent } from "@/lib/metrics";
+import { deriveObjectives } from "@/lib/progress";
 
+const live = deriveObjectives(objectives, evidence, initialEvidenceState(evidence), milestones, DEMO_TODAY);
 const base: FlagInput = {
-  objectives, milestones, evidence, evidenceState: initialEvidenceState(evidence), transactions, today: DEMO_TODAY, reviewCount: 3,
+  objectives: live, milestones, evidence, evidenceState: initialEvidenceState(evidence), transactions, today: DEMO_TODAY, reviewCount: 3,
 };
 
 describe("detectFlags", () => {
@@ -14,6 +16,11 @@ describe("detectFlags", () => {
     expect(detectFlags(base).map((f) => f.id)).toEqual([
       "equipment-t7", "unallowable-t12", "invention-e7", "atrisk-o3", "milestone-m2", "review",
     ]);
+  });
+  it("routes possible inventions to counsel instead of filing a disclosure", () => {
+    const f = detectFlags(base).find((x) => x.kind === "invention")!;
+    expect(f.actionLabel).toBe("Send to counsel for review");
+    expect(f.detail).toMatch(/legal call/);
   });
   it("respects the $10,000 equipment threshold", () => {
     const under = transactions.map((t) => (t.id === "t7" ? { ...t, lineItems: [{ description: "GPU", amount: 9999 }] } : t));

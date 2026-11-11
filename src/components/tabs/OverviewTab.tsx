@@ -1,7 +1,7 @@
 /**
  * Spending and progress side by side: the core GrantTrail view.
  */
-import { award, DEMO_TODAY, milestones, objectives } from "@/data/award";
+import { award, DEMO_TODAY, milestones } from "@/data/award";
 import { evidence } from "@/data/evidence";
 import { daysBetween, formatDate, formatPct, formatUSD } from "@/lib/format";
 import { budgetUsed, objectiveSummaries, spendByCategory, timeElapsed, totalSpent } from "@/lib/metrics";
@@ -17,6 +17,7 @@ export const STATUS: Record<ObjectiveStatus, { label: string; tone: Tone }> = {
 
 /** Overview tab. Reads derived state only; no actions besides navigation. */
 export function OverviewTab({ s }: { s: GrantState }) {
+  const objectives = s.objectives;
   const used = budgetUsed(award, s.transactions);
   const time = timeElapsed(award, DEMO_TODAY);
   const done = objectives.filter((o) => o.status === "complete").length;
@@ -33,7 +34,7 @@ export function OverviewTab({ s }: { s: GrantState }) {
         <Stat label="Award period" value={formatPct(time.ratio)} sub={`Day ${time.day} of ${time.totalDays}`}>
           <ProgressBar ratio={time.ratio} tone="info" label="Award period elapsed" />
         </Stat>
-        <Stat label="Objectives complete" value={`${done} of ${objectives.length}`} sub="From linked evidence">
+        <Stat label="Objectives complete" value={`${done} of ${objectives.length}`} sub="Work-plan steps shown done by evidence">
           <ProgressBar ratio={done / objectives.length} tone="good" label="Objectives complete" />
         </Stat>
         <button onClick={() => s.setTab("flags")} className="h-full text-left">
@@ -67,6 +68,16 @@ export function OverviewTab({ s }: { s: GrantState }) {
                   <span className="font-medium tabular-nums">{o.progress}%</span>
                 </div>
                 <div className="mt-1.5"><ProgressBar ratio={o.progress / 100} tone={STATUS[o.status].tone} label={`${o.code} progress`} /></div>
+                <ul className="mt-3 space-y-1 text-xs" aria-label={`${o.code} work-plan steps`}>
+                  {o.steps.map((st) => (
+                    <li key={st.id} className="flex items-start gap-2">
+                      <span aria-hidden className={`mt-[3px] flex h-3 w-3 shrink-0 items-center justify-center rounded-full text-[8px] leading-none ${st.doneBy ? "bg-good text-white" : "ring-1 ring-border"}`}>{st.doneBy ? "✓" : ""}</span>
+                      <span className={`flex-1 ${st.doneBy ? "text-text" : "text-muted"}`}>{st.label}</span>
+                      <span className="tabular-nums text-faint">{st.weight}%</span>
+                      <span className="sr-only">{st.doneBy ? "done" : "not done"}</span>
+                    </li>
+                  ))}
+                </ul>
                 <dl className="mt-4 grid grid-cols-2 gap-y-1.5 text-xs">
                   <dt className="text-muted">Linked work</dt>
                   <dd className="text-right tabular-nums">

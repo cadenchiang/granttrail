@@ -9,6 +9,35 @@ import { OverviewTab } from "./tabs/OverviewTab";
 import { ReportTab } from "./tabs/ReportTab";
 import type { GrantState, Tab } from "./useGrantState";
 
+const STATUS_WORDS = { complete: "complete", in_progress: "in progress", at_risk: "at risk" } as const;
+
+/**
+ * Notice after a mapping decision moves an objective, so the link between
+ * confirming evidence and the numbers is visible wherever the user is.
+ */
+function ProgressNotice({ s }: { s: GrantState }) {
+  const changes = s.progressNotice?.changes ?? [];
+  return (
+    <div role="status" className="rise mt-4 flex items-start gap-3 rounded-xl border border-good/30 bg-good-bg px-4 py-3 text-sm">
+      <div className="flex-1 space-y-0.5">
+        {changes.map((c) => (
+          <div key={c.code}>
+            <span className="font-medium text-text">{c.code} progress {c.from}% → {c.to}%</span>
+            {c.statusFrom !== c.statusTo && <span className="text-muted"> · now {STATUS_WORDS[c.statusTo]}</span>}
+            {(c.stepsGained.length > 0 || c.stepsLost.length > 0) && (
+              <span className="text-muted">
+                {" "}· {[...c.stepsGained.map((l) => `done: ${l}`), ...c.stepsLost.map((l) => `no longer shown: ${l}`)].join("; ")}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+      <button onClick={() => s.setTab("overview")} className="shrink-0 text-xs font-medium text-text underline underline-offset-2">See overview</button>
+      <button onClick={s.dismissProgressNotice} aria-label="Dismiss" className="shrink-0 text-muted hover:text-text">×</button>
+    </div>
+  );
+}
+
 /** Renders the tab bar with live counts and the selected tab. */
 export function Dashboard({ s }: { s: GrantState }) {
   const tabs: { id: Tab; label: string; count?: number }[] = [
@@ -35,6 +64,7 @@ export function Dashboard({ s }: { s: GrantState }) {
           </button>
         ))}
       </div>
+      {s.progressNotice && <ProgressNotice key={s.progressNotice.key} s={s} />}
       <div role="tabpanel" className="pt-6">
         {s.tab === "overview" && <OverviewTab s={s} />}
         {s.tab === "evidence" && <EvidenceTab s={s} />}

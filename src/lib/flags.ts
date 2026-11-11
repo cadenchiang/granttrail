@@ -3,7 +3,7 @@
  * unallowable costs, and objectives or milestones that are slipping.
  */
 import { daysBetween, formatDate, formatUSD } from "./format";
-import type { Evidence, EvidenceState, Flag, FlagStatus, Milestone, Objective, Transaction } from "./types";
+import type { Evidence, EvidenceState, Flag, FlagStatus, LiveObjective, Milestone, Transaction } from "./types";
 
 /** 2 CFR 200.1 per-unit equipment threshold (raised to $10,000 in the 2024 revision). */
 export const EQUIPMENT_THRESHOLD = 10_000;
@@ -14,7 +14,8 @@ const ALCOHOL = /\b(wine|beer|cocktails?|alcohol|liquor|spirits)\b/i;
 const NOVELTY = /\b(novel|not seen in prior work|new (method|technique|augmentation|algorithm))\b/i;
 
 export interface FlagInput {
-  objectives: Objective[];
+  /** Objectives with status and progress derived from evidence (see progress.ts). */
+  objectives: LiveObjective[];
   milestones: Milestone[];
   evidence: Evidence[];
   evidenceState: Record<string, EvidenceState>;
@@ -59,9 +60,9 @@ export function detectFlags(input: FlagInput): Flag[] {
       flags.push({
         id: `invention-${e.id}`, kind: "invention",
         title: `Possible invention: ${e.title.replace(/^Method note:\s*/i, "")}`,
-        detail: `"${e.excerpt}" (${e.author}, ${formatDate(e.date)}). If this is a new invention made under the award, it has to be disclosed.`,
-        rule: "37 CFR 401.14 (Bayh-Dole): disclose subject inventions to the agency, usually via iEdison, within 2 months of the inventor's written disclosure to the company.",
-        actionLabel: "Start iEdison disclosure", resolvedLabel: "Disclosure started", refs: [e.id],
+        detail: `"${e.excerpt}" (${e.author}, ${formatDate(e.date)}). This language suggests something new was made under the award. Whether it is a subject invention is a legal call, so send it to counsel before the report says anything about inventions.`,
+        rule: "37 CFR 401.14 (Bayh-Dole): if counsel confirms a subject invention, disclose it to the agency (usually via iEdison) within 2 months of the inventor's written disclosure to the company.",
+        actionLabel: "Send to counsel for review", resolvedLabel: "Sent to counsel", refs: [e.id],
       });
     }
   }

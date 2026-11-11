@@ -1,18 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { award, DEMO_TODAY, objectives } from "@/data/award";
+import { award, DEMO_TODAY, milestones, objectives } from "@/data/award";
 import { evidence } from "@/data/evidence";
 import { transactions } from "@/data/transactions";
 import { resolveCitation } from "@/lib/citations";
 import { applyResolutions } from "@/lib/flags";
 import { initialEvidenceState } from "@/lib/metrics";
+import { deriveObjectives } from "@/lib/progress";
 import { buildReport, countGaps, gapTarget, phaseTwoHeadStart, toMarkdown, type ReportInput } from "@/lib/report";
 import type { FlagStatus } from "@/lib/types";
 
 const OPEN: Record<string, FlagStatus> = {
   "equipment-t7": "open", "unallowable-t12": "open", "invention-e7": "open", "atrisk-o3": "open", "milestone-m2": "open",
 };
+const live = deriveObjectives(objectives, evidence, initialEvidenceState(evidence), milestones, DEMO_TODAY);
 const input = (flagStatus: Record<string, FlagStatus>): ReportInput => ({
-  award, objectives, evidence, evidenceState: initialEvidenceState(evidence),
+  award, objectives: live, evidence, evidenceState: initialEvidenceState(evidence),
   transactions: applyResolutions(transactions, flagStatus), flagStatus, today: DEMO_TODAY,
 });
 const ctx = { award, evidence, transactions };

@@ -9,7 +9,15 @@ export type Source = "github" | "linear" | "docs" | "ramp";
 /** Lifecycle of an objective as extracted from the award. */
 export type ObjectiveStatus = "complete" | "in_progress" | "at_risk";
 
-/** A technical objective from the award agreement. */
+/** A task from the award's work plan; evidence completes it. */
+export interface WorkStep {
+  id: string;
+  label: string;
+  /** Share of the objective, in percentage points. Steps of one objective sum to 100. */
+  weight: number;
+}
+
+/** A technical objective as extracted from the award agreement. */
 export interface Objective {
   id: string;
   code: string; // "O1", "O2", ...
@@ -17,11 +25,23 @@ export interface Objective {
   target: string;
   /** Page/section of the award the objective was extracted from. */
   sourceRef: string;
-  status: ObjectiveStatus;
-  /** 0 to 100, as judged from linked evidence. */
-  progress: number;
+  /** Work-plan steps; progress is the weight of the steps that evidence has completed. */
+  steps: WorkStep[];
   /** What evidence is still missing while the objective is not complete. */
   openGap: string | null;
+}
+
+/** A work step plus the evidence item (if any) that shows it done. */
+export interface StepProgress extends WorkStep {
+  doneBy: string | null;
+}
+
+/** An objective with status and progress derived from the evidence mapped to it. */
+export interface LiveObjective extends Objective {
+  status: ObjectiveStatus;
+  /** 0 to 100: weight of completed steps. */
+  progress: number;
+  steps: StepProgress[];
 }
 
 /** A dated milestone or deadline from the award. */
@@ -89,6 +109,10 @@ export interface Evidence {
   /** AI-suggested objective; null when the model could not decide. */
   suggestedObjectiveId: string | null;
   confidence: number; // 0 to 1
+  /** One line on why the AI matched (or could not match) this item. */
+  rationale: string;
+  /** Work step this item shows done, counted only while it is mapped to that step's objective. */
+  completesStep?: string;
 }
 
 /** User decisions layered on top of AI suggestions. */
