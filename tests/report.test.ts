@@ -6,7 +6,7 @@ import { resolveCitation } from "@/lib/citations";
 import { applyResolutions } from "@/lib/flags";
 import { initialEvidenceState } from "@/lib/metrics";
 import { deriveObjectives } from "@/lib/progress";
-import { buildReport, countGaps, gapTarget, phaseTwoHeadStart, toMarkdown, type ReportInput } from "@/lib/report";
+import { buildReport, countGaps, gapTarget, nextReportDeadline, phaseTwoHeadStart, toMarkdown, toPlainText, type ReportInput } from "@/lib/report";
 import type { FlagStatus } from "@/lib/types";
 
 const OPEN: Record<string, FlagStatus> = {
@@ -103,5 +103,24 @@ describe("gapTarget", () => {
       "gap-invention-e7": "flags", "gap-problem-o3": "flags", "gap-unallowable-t12": "flags",
     });
     expect(gapTarget("gap-o1-none")).toBe("evidence");
+  });
+});
+
+describe("toPlainText and nextReportDeadline", () => {
+  const sec = [
+    { id: "s", heading: "Results", claims: [{ text: "A.", citations: ["x", "y"] }, { text: "B.", citations: ["x"] }], gaps: [{ id: "g", text: "Missing." }] },
+    { id: "e", heading: "Empty", claims: [], gaps: [] },
+  ];
+  it("pastes cleanly: caps headings, numbered refs, loud gaps, no Markdown", () => {
+    const t = toPlainText("Report", sec, (id) => (id === "x" ? "Source X" : null));
+    expect(t).toContain("RESULTS\nA. [1][2] B. [1]\n[MISSING EVIDENCE: Missing.]");
+    expect(t).toContain("EMPTY\nNothing to report.");
+    expect(t).toContain("[1] Source X");
+    expect(t).toContain("[2] UNRESOLVED CITATION (y)");
+    expect(t).not.toMatch(/^#|\*\*/m);
+  });
+  it("finds the final report deadline from the award", () => {
+    expect(nextReportDeadline(milestones, DEMO_TODAY)).toEqual({ title: "Final project report due", due: "2027-04-30", daysLeft: 190, sourceRef: "p. 19, Art. 12" });
+    expect(nextReportDeadline([], DEMO_TODAY)).toBeNull();
   });
 });

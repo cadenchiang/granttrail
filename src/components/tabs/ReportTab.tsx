@@ -4,13 +4,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { award } from "@/data/award";
+import { award, DEMO_TODAY, milestones } from "@/data/award";
 import { evidence } from "@/data/evidence";
 import { transactions as sampleTransactions } from "@/data/transactions";
 import { resolveCitation } from "@/lib/citations";
 import { logEvent } from "@/lib/log";
 import { sourcesUsed, summarizeRampSync } from "@/lib/rampSync";
-import { countGaps, gapTarget, phaseTwoHeadStart, toMarkdown } from "@/lib/report";
+import { formatDate } from "@/lib/format";
+import { countGaps, gapTarget, nextReportDeadline, phaseTwoHeadStart, toMarkdown, toPlainText } from "@/lib/report";
 import { Citation } from "../ui/Citation";
 import { Badge, Button, Card, SourceMark } from "../ui/primitives";
 import type { GrantState } from "../useGrantState";
@@ -18,13 +19,16 @@ import type { GrantState } from "../useGrantState";
 const DRAFT_STEPS = ["Pulling synced Ramp transactions and receipts", "Retrieving linked evidence", "Writing each section from cited records", "Checking every claim has a source"];
 const REPORT_TITLE = `${award.program} progress report: ${award.awardNumber}`;
 
+/** Citation id to "label: detail" for exports. */
+const citationLabel = (s: GrantState) => (id: string) => {
+  const c = resolveCitation(id, s.citationCtx);
+  return c ? `${c.label}: ${c.detail}` : null;
+};
+
 /** Download the draft as Markdown; failures are logged and shown, never swallowed. */
 function exportMarkdown(s: GrantState): string | null {
   try {
-    const md = toMarkdown(REPORT_TITLE, s.sections, (id) => {
-      const c = resolveCitation(id, s.citationCtx);
-      return c ? `${c.label}: ${c.detail}` : null;
-    });
+    const md = toMarkdown(REPORT_TITLE, s.sections, citationLabel(s));
     const url = URL.createObjectURL(new Blob([md], { type: "text/markdown" }));
     const a = document.createElement("a");
     a.href = url;
@@ -37,6 +41,97 @@ function exportMarkdown(s: GrantState): string | null {
     logEvent("error", "report.export_failed", String(err), { awardNumber: award.awardNumber }, "No file downloaded; user shown an error");
     return "Export failed. Try again, or copy the draft from the page.";
   }
+}
+
+/**
+ * Copy the draft as plain text for an agency portal. Uses the Clipboard API and
+ * falls back to a hidden textarea where that API is blocked.
+ * @returns an error message, or null on success
+ */
+async function copyPlainText(s: GrantState): Promise<string | null> {
+  const text = toPlainText(REPORT_TITLE, s.sections, citationLabel(s));
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      if (!ok) throw new Error("execCommand copy returned false");
+    }
+    logEvent("info", "report.copy", "user copied plain-text report", { chars: text.length }, "Report text on clipboard for the agency portal");
+    return null;
+  } catch (err) {
+    logEvent("error", "report.copy_failed", String(err), {}, "Nothing copied; user shown an error");
+    return "Couldn't copy to the clipboard. Use Download .md instead.";
+  }
+}
+
+/**
+ * The end of the flow: shown once the draft is approved. The person copies or
+ * downloads the report and submits it themselves; GrantTrail never submits.
+ */
+function ReadyToSubmit({ s, gaps }: { s: GrantState; gaps: number }) {
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const deadline = nextReportDeadline(milestones, DEMO_TODAY);
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 2500);
+    return () => clearTimeout(t);
+  }, [copied]);
+
+  return (
+    <Card className="rise border-good/30 p-5 sm:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <span aria-hidden className="flex h-5 w-5 items-center justify-center rounded-full bg-good text-[11px] text-white">✓</span>
+            <h2 className="text-base font-semibold tracking-tight">Ready to submit</h2>
+          </div>
+          <p className="mt-1.5 text-sm text-muted">
+            Every section is reviewed and every claim cites a record. Paste the text into the {award.agency} project report on Research.gov.
+          </p>
+          {gaps > 0 && (
+            <p className="mt-2 text-sm text-warn">
+              {gaps} gap{gaps === 1 ? " is" : "s are"} still open and will paste as [MISSING EVIDENCE] so nothing goes in unnoticed.
+            </p>
+          )}
+        </div>
+        {deadline && (
+          <div className="shrink-0 rounded-xl border border-border px-4 py-3 text-sm sm:text-right">
+            <div className="text-xs text-muted">{deadline.title}</div>
+            <div className="mt-0.5 font-semibold tabular-nums">{formatDate(deadline.due)}</div>
+            <div className="text-xs text-muted">
+              {deadline.daysLeft >= 0 ? `${deadline.daysLeft} days left` : `${-deadline.daysLeft} days overdue`} · {deadline.sourceRef}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button variant="primary" onClick={async () => {
+          const err = await copyPlainText(s);
+          setError(err);
+          setCopied(err === null);
+        }}>
+          {copied ? "Copied ✓" : "Copy for Research.gov"}
+        </Button>
+        <Button onClick={() => setError(exportMarkdown(s))}>Download .md</Button>
+      </div>
+      {error && <p className="mt-2 text-sm text-bad">{error}</p>}
+
+      <p className="mt-4 border-t border-border pt-3 text-xs text-muted">
+        GrantTrail never submits for you. Your team signs and submits, so your team stays accountable for what the agency sees.
+      </p>
+    </Card>
+  );
 }
 
 /**
@@ -89,7 +184,6 @@ function DraftStart({ onDraft, rampConnected }: { onDraft: () => void; rampConne
 
 /** Report tab. */
 export function ReportTab({ s }: { s: GrantState }) {
-  const [exportError, setExportError] = useState<string | null>(null);
   if (!s.reportGenerated) return <DraftStart onDraft={s.generateReport} rampConnected={s.rampConnected} />;
 
   const numbers = new Map<string, number>();
@@ -112,17 +206,11 @@ export function ReportTab({ s }: { s: GrantState }) {
           <Badge tone={allReviewed ? "good" : "neutral"}>{reviewedCount}/{s.sections.length} sections reviewed</Badge>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => setExportError(exportMarkdown(s))}>Export .md</Button>
           <Button variant="primary" disabled={!allReviewed || s.approved} onClick={s.approve}>{s.approved ? "Approved" : "Approve draft"}</Button>
         </div>
       </Card>
-      {exportError && <Card className="border-bad/40 bg-bad-bg p-3 text-sm text-bad">{exportError}</Card>}
-      {s.approved && (
-        <Card className="border-good/30 bg-good-bg p-4 text-sm text-good">
-          Approved{gaps > 0 ? ` with ${gaps} open gap${gaps === 1 ? "" : "s"}` : ""}. Ready to paste into the agency portal. GrantTrail never submits for you.
-        </Card>
-      )}
-      {!allReviewed && <p className="text-xs text-muted">A person has to review every section before the draft can be approved.</p>}
+      {s.approved && <ReadyToSubmit s={s} gaps={gaps} />}
+      {!allReviewed && <p className="text-xs text-muted">Review every section to approve the draft. Copy and download unlock after approval.</p>}
 
       <Card className="p-6 sm:p-8">
         <div className="text-xs text-muted">{award.agency} · {award.program} · {award.company}</div>

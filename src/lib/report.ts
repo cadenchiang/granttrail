@@ -3,7 +3,7 @@
  * is missing the section gets a gap instead of invented text.
  */
 import { EQUIPMENT_THRESHOLD } from "./flags";
-import { formatPct, formatUSD } from "./format";
+import { formatPct, formatUSD, daysBetween } from "./format";
 import { budgetUsed, evidenceFor, isReportable, spendByCategory, timeElapsed, totalSpent } from "./metrics";
 import type { Award, Claim, Evidence, EvidenceState, FlagStatus, Gap, LiveObjective, ObjectiveStatus, ReportSection, Transaction } from "./types";
 
@@ -159,6 +159,44 @@ export function toMarkdown(title: string, sections: ReportSection[], label: (id:
   lines.push("## Sources", "");
   order.forEach((id, i) => lines.push(`${i + 1}. ${label(id) ?? `UNRESOLVED CITATION (${id})`}`));
   return lines.join("\n") + "\n";
+}
+
+/**
+ * Render the draft as plain text for pasting into an agency portal form
+ * (e.g. the Research.gov project report). No Markdown syntax; headings in caps,
+ * claims as sentences with numbered references, and gaps left loud so they
+ * cannot be pasted in unnoticed.
+ * @param label resolves a citation id to a display string; unknown ids are kept and marked
+ */
+export function toPlainText(title: string, sections: ReportSection[], label: (id: string) => string | null): string {
+  const order: string[] = [];
+  const num = (id: string) => {
+    if (!order.includes(id)) order.push(id);
+    return order.indexOf(id) + 1;
+  };
+  const lines = [title.toUpperCase(), ""];
+  for (const s of sections) {
+    lines.push(s.heading.toUpperCase());
+    const body = s.claims.map((c) => `${c.text}${c.citations.length ? " " + c.citations.map((id) => `[${num(id)}]`).join("") : ""}`);
+    if (body.length) lines.push(body.join(" "));
+    for (const g of s.gaps) lines.push(`[MISSING EVIDENCE: ${g.text}]`);
+    if (!body.length && !s.gaps.length) lines.push("Nothing to report.");
+    lines.push("");
+  }
+  lines.push("REFERENCES");
+  order.forEach((id, i) => lines.push(`[${i + 1}] ${label(id) ?? `UNRESOLVED CITATION (${id})`}`));
+  return lines.join("\n") + "\n";
+}
+
+/** The next agency report deadline from the award, with days remaining (negative when overdue). */
+export function nextReportDeadline(
+  milestones: { title: string; due: string; done: boolean; objectiveId: string | null; sourceRef: string }[],
+  today: string,
+): { title: string; due: string; daysLeft: number; sourceRef: string } | null {
+  const m = milestones
+    .filter((x) => !x.done && x.objectiveId === null && /report due/i.test(x.title))
+    .sort((a, b) => a.due.localeCompare(b.due))[0];
+  return m ? { title: m.title, due: m.due, daysLeft: daysBetween(today, m.due), sourceRef: m.sourceRef } : null;
 }
 
 /**
