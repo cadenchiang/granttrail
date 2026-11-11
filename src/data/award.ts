@@ -36,8 +36,8 @@ export const objectives: Objective[] = [
     steps: [
       { id: "o1-rig", label: "Capture rig and labeling schema ready", weight: 20 },
       { id: "o1-pipeline", label: "Export pipeline tags scans by chemistry", weight: 15 },
-      { id: "o1-label", label: "All three chemistries labeled", weight: 30 },
-      { id: "o1-card", label: "Dataset of 20,000+ scans documented", weight: 35 },
+      { id: "o1-label", label: "NMC and LCO scans labeled and reviewed", weight: 30 },
+      { id: "o1-card", label: "Dataset of 20,000+ scans across all three chemistries documented", weight: 35 },
     ],
     openGap: null,
   },

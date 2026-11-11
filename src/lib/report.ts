@@ -109,6 +109,9 @@ export function buildReport(input: ReportInput): ReportSection[] {
     const blocker = evidenceFor(o.id, input.evidence, input.evidenceState).find((e) => isReportable(e, input.evidenceState) && /^blocked/i.test(e.excerpt));
     if (resolved(flagStatus, `atrisk-${o.id}`) && blocker) {
       problems.claims.push({ text: `${o.code} is behind schedule (${o.progress}% complete). ${blocker.claim}`, citations: [blocker.id] });
+    } else if (resolved(flagStatus, `atrisk-${o.id}`)) {
+      // flag handled but its blocker evidence was remapped away: the fix is in Evidence, not Flags
+      problems.gaps.push({ id: `gap-${o.id}-problem`, text: `Link the evidence that explains why ${o.code} is behind schedule, or give the revised plan.` });
     } else {
       problems.gaps.push({ id: `gap-problem-${o.id}`, text: `Explain why ${o.code} is behind schedule and give the revised plan.` });
     }

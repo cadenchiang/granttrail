@@ -124,3 +124,20 @@ describe("toPlainText and nextReportDeadline", () => {
     expect(nextReportDeadline([], DEMO_TODAY)).toBeNull();
   });
 });
+
+describe("problem gap after the blocker is remapped", () => {
+  it("points to Evidence when the at-risk flag is resolved but no blocker is linked", () => {
+    expect(gapTarget("gap-o3-problem")).toBe("evidence");
+    expect(gapTarget("gap-problem-o3")).toBe("flags");
+  });
+});
+
+describe("buildReport problems section", () => {
+  it("gives an Evidence gap when atrisk-o3 is resolved but the blocker (e9) was remapped", () => {
+    const st = { ...initialEvidenceState(evidence), e9: { objectiveId: null, confirmed: true } };
+    const objs = deriveObjectives(objectives, evidence, st, milestones, DEMO_TODAY);
+    const sections = buildReport({ award, objectives: objs, evidence, evidenceState: st, transactions, flagStatus: { "atrisk-o3": "resolved" } as Record<string, FlagStatus>, today: DEMO_TODAY });
+    const problems = sections.find((s) => s.id === "problems")!;
+    expect(problems.gaps.map((g) => g.id)).toContain("gap-o3-problem");
+  });
+});

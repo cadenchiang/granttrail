@@ -96,12 +96,14 @@ export function useGrantState() {
     setEvidenceState(next);
     if (changes.length > 0) setProgressNotice({ key: Date.now(), changes });
     logEvent("info", "evidence.assign", "user confirmed or changed mapping", { id, objectiveId, progressChanges: changes }, "Overview, flags and report now use this mapping");
+    setReviewed({}); // sections may have changed, so each needs a fresh look
     invalidateApproval("evidence mapping changed");
   }, [evidenceState, liveObjectives, invalidateApproval]);
 
   const setFlag = useCallback((id: string, status: FlagStatus) => {
     setFlagDecisions((d) => ({ ...d, [id]: status }));
     logEvent("info", "flag.set", "user acted on flag", { id, status }, status === "resolved" ? "Report section updates from gap to cited claim" : "Flag reopened; report shows the gap again");
+    setReviewed({}); // sections may have changed, so each needs a fresh look
     invalidateApproval("flag status changed");
   }, [invalidateApproval]);
 

@@ -11,7 +11,8 @@ import { resolveCitation } from "@/lib/citations";
 import { logEvent } from "@/lib/log";
 import { sourcesUsed, summarizeRampSync } from "@/lib/rampSync";
 import { formatDate } from "@/lib/format";
-import { countGaps, gapTarget, nextReportDeadline, phaseTwoHeadStart, toMarkdown, toPlainText } from "@/lib/report";
+import { countGaps, gapTarget, nextReportDeadline, phaseTwoHeadStart, toPlainText } from "@/lib/report";
+import { textToPdf } from "@/lib/pdf";
 import { Citation } from "../ui/Citation";
 import { Badge, Button, Card, SourceMark } from "../ui/primitives";
 import type { GrantState } from "../useGrantState";
@@ -22,24 +23,26 @@ const REPORT_TITLE = `${award.program} progress report: ${award.awardNumber}`;
 /** Citation id to "label: detail" for exports. */
 const citationLabel = (s: GrantState) => (id: string) => {
   const c = resolveCitation(id, s.citationCtx);
-  return c ? `${c.label}: ${c.detail}` : null;
+  if (!c) return null;
+  // docs evidence uses its title as the label, so skip the repeat
+  return c.detail.startsWith(c.label) ? c.detail : `${c.label}: ${c.detail}`;
 };
 
-/** Download the draft as Markdown; failures are logged and shown, never swallowed. */
-function exportMarkdown(s: GrantState): string | null {
+/** Download the draft as a PDF; failures are logged and shown, never swallowed. */
+function exportPdf(s: GrantState): string | null {
   try {
-    const md = toMarkdown(REPORT_TITLE, s.sections, citationLabel(s));
-    const url = URL.createObjectURL(new Blob([md], { type: "text/markdown" }));
+    const bytes = textToPdf(toPlainText(REPORT_TITLE, s.sections, citationLabel(s)));
+    const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: "application/pdf" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = `granttrail-report-${award.awardNumber}.md`;
+    a.download = `granttrail-report-${award.awardNumber}.pdf`;
     a.click();
-    URL.revokeObjectURL(url);
-    logEvent("info", "report.export", "user exported draft", { bytes: md.length }, "Markdown file downloaded");
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    logEvent("info", "report.export", "user exported draft as PDF", { bytes: bytes.length }, "PDF file downloaded");
     return null;
   } catch (err) {
     logEvent("error", "report.export_failed", String(err), { awardNumber: award.awardNumber }, "No file downloaded; user shown an error");
-    return "Export failed. Try again, or copy the draft from the page.";
+    return "Export failed. Try again, or use Copy for Research.gov.";
   }
 }
 
@@ -69,7 +72,7 @@ async function copyPlainText(s: GrantState): Promise<string | null> {
     return null;
   } catch (err) {
     logEvent("error", "report.copy_failed", String(err), {}, "Nothing copied; user shown an error");
-    return "Couldn't copy to the clipboard. Use Download .md instead.";
+    return "Couldn't copy to the clipboard. Use Download PDF instead.";
   }
 }
 
@@ -96,7 +99,7 @@ function ReadyToSubmit({ s, gaps }: { s: GrantState; gaps: number }) {
             <h2 className="text-base font-semibold tracking-tight">Ready to submit</h2>
           </div>
           <p className="mt-1.5 text-sm text-muted">
-            Every section is reviewed and every claim cites a record. Paste the text into the {award.agency} project report on Research.gov.
+            Every section is reviewed{gaps === 0 ? " and every claim cites a record" : ""}. Paste the text into the {award.agency} project report on Research.gov.
           </p>
           {gaps > 0 && (
             <p className="mt-2 text-sm text-warn">
@@ -123,7 +126,7 @@ function ReadyToSubmit({ s, gaps }: { s: GrantState; gaps: number }) {
         }}>
           {copied ? "Copied ✓" : "Copy for Research.gov"}
         </Button>
-        <Button onClick={() => setError(exportMarkdown(s))}>Download .md</Button>
+        <Button onClick={() => setError(exportPdf(s))}>Download PDF</Button>
       </div>
       {error && <p className="mt-2 text-sm text-bad">{error}</p>}
 
